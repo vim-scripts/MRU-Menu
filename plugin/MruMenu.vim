@@ -2,8 +2,8 @@
 " Purpose: Create a menu with most recently used files
 " Author: Rajesh Kallingal <RajeshKallingal@yahoo.com>
 " Original Author: ???
-" Version: 6.0.3
-" Last Modified: Thu May 15 16:29:52 2003
+" Version: 6.0.4
+" Last Modified: Fri May 23 10:49:47 2003
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 "
 " Description:
@@ -25,8 +25,8 @@
 " 	Just drop it this file in your plugin folder/directory.
 "
 " TODO:
-" 	- handle buffers to exclude (unlisted buffers, help files)
-" 	- handle menu size of more than 35
+" 	- Add different sort/group options (group by file type, or folder)
+" 	- handling sessions	
 " 	- help document
 "
 " vim ts=4 : sw=4 : tw=0
@@ -387,7 +387,7 @@ augroup MRU
     "           filetype is not able to be determined and excluded
     "           based on type.)
 	"autocmd BufDelete,BufEnter,BufWritePost,FileWritePost * call MRUAddToList ()
-	autocmd BufEnter * call MRUAddToList ()
+	autocmd BufEnter,BufWritePost,FileWritePost * call MRUAddToList ()
 	"+++
 	autocmd VimLeavePre * nested call MRUVimLeavePre()
 augroup END
