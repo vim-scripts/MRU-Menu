@@ -2,7 +2,9 @@
 " Purpose: Create a menu with most recently used files
 " Author: Rajesh Kallingal <RajeshKallingal@email.com>
 " Original Author: ???
-" Last Modified: Wed Feb 06 16:14:53 2002
+" Version: 6.0.2
+" Last Modified: Fri Feb 08 12:55:32 2002
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 "
 " Description:
 " 	This plugin will create a MRU menu to keep track of most recently visited
@@ -14,7 +16,7 @@
 "		MRU_BUFFERS - keeps the lsit of recent buffers, usedto build the menu
 "		MRU_MENUSIZE - maximum entries to keep in the list
 "		MRU_HOTKEYS - whether to have a hot key of 0-9, A-Z in the menu
-"		MRU_LABEL - menu name to use, default is '&Recent'
+"		MRU_LABEL - menu name to use, default is 'M&RU'
 "
 "	Excludes:
 "		help files (not working)
@@ -69,6 +71,13 @@ endfunction
 function! MRUInitializeGlobals()
 	" Initialize the global variables with defaults if they are not stored in
 	" viminfo.
+
+	" Do not intialize, if already been intialized
+	if exists("s:initialized_globals")
+	  return
+	endif
+	let s:initialized_globals=1
+
 	if exists('g:MRU_LABEL')
 		"name of the menu
 		let s:mru_label = g:MRU_LABEL
@@ -243,6 +252,9 @@ endfunction
 function! MRUAddToList ()
 	" add current buffer to list of recent travellers.  Remove oldest if
 	" bigger than MRU_MENUSIZE
+
+	call MRUInitializeGlobals () " incase vim is started with drag & drop
+
 	let l:filename = expand("<afile>:p")
 
 	" Exclude following files/types/folders
@@ -256,9 +268,6 @@ function! MRUAddToList ()
 "	endif
 
 	if l:filename != '' && filereadable (expand ("<afile>"))
-
-"		call MRUInitializeGlobals () " incase vim is started with a file
-
 		" Remove the current file entry from MRU_BUFFERS
 		let s:mru_buffers = substitute(s:mru_buffers, escape(l:filename,'\\~'). "\377", '', 'g')
 		" Add current file as the first in MRU_BUFFERS list
@@ -392,6 +401,11 @@ endfunction
 
 
 function! MRUVimLeavePre()
+	let g:MRU_LABEL = s:mru_label
+	let g:MRU_MENUSIZE = s:mru_menusize
+	let g:MRU_HOTKEYS = s:mru_hotkeys
+	let g:MRU_BUFFERS = s:mru_buffers
+	
 	" Split the MRU_BUFFERS int to small ones (< 494), apparently when vim is
 	" restarted it reads in only first 494 characters of the global buffer.
 	" THIS IS JUST A WORK AROUND
@@ -415,11 +429,6 @@ function! MRUVimLeavePre()
 "	endif
 "	let g:MRU_BUF_COUNT = counter
 
-	let g:MRU_LABEL = s:mru_label
-	let g:MRU_MENUSIZE = s:mru_menusize
-	let g:MRU_HOTKEYS = s:mru_hotkeys
-	let g:MRU_BUFFERS = s:mru_buffers
-	
 endfunction
 
 
