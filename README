@@ -1,0 +1,23 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=207
+
+Description:
+	This plugin will create a MRU menu to keep track of most recently visited
+	buffers. You can customize Menu Label, menu size and whether to show
+	numbered or non-numbered menu
+                                                                            
+  Global Variables Used:
+  	MRU_BUFFERS - keeps the lsit of recent buffers, usedto build the menu
+  	MRU_MENUSIZE - maximum entries to keep in the list
+  	MRU_HOTKEYS - whether to have a hot key of 0-9, A-Z in the menu
+  	MRU_LABEL - menu name to use, default is 'M&RU'
+                                                                            
+Screen Shots: 
+  	http://www.geocities.com/rajesh_kallingal/vim/vimmru01.jpg 
+  	http://www.geocities.com/rajesh_kallingal/vim/vimmru02.jpg 
+
+  	If the above links don't work try this http://www.geocities.com/rajesh_kallingal/vim
+     
+TODO:
+	- handle menu size of more than 35
+	- help document
+
