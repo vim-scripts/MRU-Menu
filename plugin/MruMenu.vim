@@ -1,9 +1,9 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Purpose: Create a menu with most recently used files
-" Author: Rajesh Kallingal <RajeshKallingal@email.com>
+" Author: Rajesh Kallingal <RajeshKallingal@yahoo.com>
 " Original Author: ???
-" Version: 6.0.2
-" Last Modified: Fri Feb 08 12:55:32 2002
+" Version: 6.0.3
+" Last Modified: Thu May 15 16:29:52 2003
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 "
 " Description:
@@ -33,16 +33,20 @@
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " Do not load, if already been loaded
-if exists("loaded_mrumenu")
-  finish
+if exists("g:loaded_mrumenu")
+	finish
 endif
 
-let loaded_mrumenu=1
+let g:loaded_mrumenu = 1
 
 " Line continuation used here
 let s:cpo_save = &cpo
 set cpo&vim
 
+"+++ Cream uses "]"
+let s:sep = "]"
+let s:sep = "\377"
+"+++
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Variables
@@ -50,23 +54,24 @@ set cpo&vim
 " following are the default values for the script variables used to control
 " the script behaviour. The value will be remembered for the future sessions
 
-let s:script_file = expand ('<sfile>:p') " store file name to use in the menu
-let s:mru_label = 'M&RU' " The menu label to be used, default value
-let s:mru_menusize = 10 " default value
-let s:mru_hotkeys = 0	" set this to 1 if you want to have 0-9, A-Z as the hotkeys in the mru list, set to 0 for the default file name
+" store file name to use in the menu
+let s:script_file = expand ('<sfile>:p')
+" The menu label to be used, default value
+let s:mru_label = 'M&RU'
+" default value
+let s:mru_menusize = 10
+" set this to 1 if you want to have 0-9, A-Z as the hotkeys in the mru list, set to 0 for the default file name
+let s:mru_hotkeys = 0
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " Functions
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 function! MRUInitialize()
-	
+
 	call MRUInitializeGlobals ()
 	call MRURefreshMenu ()
 
 endfunction
-
-
-
 
 function! MRUInitializeGlobals()
 	" Initialize the global variables with defaults if they are not stored in
@@ -74,7 +79,7 @@ function! MRUInitializeGlobals()
 
 	" Do not intialize, if already been intialized
 	if exists("s:initialized_globals")
-	  return
+		return
 	endif
 	let s:initialized_globals=1
 
@@ -99,7 +104,7 @@ function! MRUInitializeGlobals()
 	if exists('g:MRU_BUFFERS')
 		" list of recent buffers
 		let s:mru_buffers = g:MRU_BUFFERS
-		echo strlen (s:mru_buffers)
+"		echo strlen (s:mru_buffers)
 		unlet g:MRU_BUFFERS
 	else
 		let s:mru_buffers = ""
@@ -114,35 +119,12 @@ function! MRUInitializeGlobals()
 	
 endfunction
 
-
-
-
-"function! MRUJoinBufList()
-"OBSOLETE
-"	" Join the MRU_BUFFERn into MRU_BUFFERS, apparently when vim is
-"	" restarted it reads in only first 494 characters of the global buffer.
-"	" THIS IS JUST A WORK AROUND
-"	let counter = 1
-"	let g:MRU_BUFFERS = ''
-"	if exists ("g:MRU_BUF_COUNT")
-"		while ( counter <= g:MRU_BUF_COUNT )
-"			execute 'let g:MRU_BUFFERS = g:MRU_BUFFERS . g:MRU_BUFFER' . counter
-"			execute 'unlet g:MRU_BUFFER' . counter
-"			let counter = counter + 1
-"		endwhile
-"		unlet g:MRU_BUF_COUNT
-"	endif
-"endfunction
-
-
-
-
 function! MRURefreshMenu()
 	" This function will recreate the menu entries from s:mru_buffers variable
 
 	" remove the MRU Menu
-	execute 'amenu ' . s:mru_label . '.x x'
-	execute 'aunmenu ' . s:mru_label
+	execute 'anoremenu <silent> ' . s:mru_label . '.x x'
+	execute 'silent! aunmenu ' . s:mru_label
 
 	" use this variable to keep the list of entries in the menu so far
 	let l:menu_list = ''
@@ -152,19 +134,23 @@ function! MRURefreshMenu()
 	while l:list != "" && s:mru_count < s:mru_menusize
 		" put a separator after every 10 entries
 		if s:mru_count % 10 == 0 && s:mru_count / 10 > 0
-			execute 'amenu ' . s:mru_label . '.-sep' . s:mru_count / 10 . '- <NUL>'
+			execute 'amenu ' . s:mru_label . '.-sep' . s:mru_count . '- <NUL>'
 		endif
-		let l:entry_length = match(l:list, "\377")
+		let l:entry_length = match(l:list, s:sep)
 		if l:entry_length >= 0
 			let l:fullpath = strpart(l:list, 0, l:entry_length)
-			let l:list = strpart(l:list, l:entry_length+1, strlen(l:list))
+			let l:list = strpart(l:list, l:entry_length + 1, strlen(l:list))
 		else
 			let l:fullpath = l:list
 			let l:list = ""
 		endif
 
 		if l:fullpath != ""
-			let l:filename = fnamemodify (l:fullpath, ':t')
+			let l:filename = fnamemodify(l:fullpath, ':t')
+
+			"+++ Cream: handle file names with tilde characters in matching through list
+			let l:filename = escape(l:filename, "~")
+			"+++
 
 			" append a space to the filename to enable multiple entries in menu
 			" which has the same filename but different path
@@ -173,6 +159,10 @@ function! MRURefreshMenu()
 			endwhile
 
 			let l:menu_list = l:menu_list . l:filename . "\/"
+
+			"+++ Cream: un-escape tilde characters back so menu shows correctly
+			let l:filename = substitute(l:filename, '\\\~', '\~', 'g')
+			"+++
 
 			let s:mru_count = s:mru_count + 1
 			call MRUAddToMenu (l:fullpath, l:filename)
@@ -184,23 +174,24 @@ function! MRURefreshMenu()
 
 endfunction
 
-
-
-
 function! MRUAddToMenu (fullpath, filename)
 	" Add the entry to the menu
 
 	let l:menu_entry = a:filename . "\t" . fnamemodify(a:fullpath,':h')
 	let l:menu_entry = escape(l:menu_entry, '\\. 	|\~')
-	let l:menu_entry = substitute (l:menu_entry, '&', '&&', 'g') "incase there is an & in the filename
-
-	if bufloaded (a:fullpath)
-		let l:menu_command = ' :buffer ' . a:fullpath . '<cr>'
-		let l:tmenu_text = 'Goto Buffer ' . a:fullpath
-	else
-		let l:menu_command = ' :edit ' . a:fullpath . '<cr>'
-		let l:tmenu_text = 'Edit File ' . a:fullpath
+	let l:editfilename = escape(a:fullpath, '\\. 	|\~')
+    "incase there is an & in the filename
+	if      has("win32")
+		\|| has("win16")
+		\|| has("win95")
+		\|| has("dos16")
+		\|| has("dos32")
+    	let l:menu_entry = substitute (l:menu_entry, '&', '&&', 'g')
+		let l:editfilename = substitute (l:editfilename, '&', '&&', 'g')
 	endif
+
+	let l:menu_command = ' :call MRUEditFile("' . l:editfilename . '")<cr>'
+	let l:tmenu_text = 'Edit File ' . a:fullpath
 	if exists ("s:mru_hotkeys") && s:mru_hotkeys == 1
 		 " use hot keys 0-9, A-Z
 		 if s:mru_count <= 10
@@ -208,60 +199,71 @@ function! MRUAddToMenu (fullpath, filename)
 		else
 			let l:alt_key = nr2char (s:mru_count + 54) "start with A at 65
 		endif
-		exe 'am '. s:mru_label . '.' . l:alt_key . '\.\ ' . l:menu_entry . l:menu_command
-		exe 'tmenu ' . s:mru_label . '.' . l:alt_key . '\.\ ' . substitute (escape (a:filename, '\\. 	|\~'), '&', '&&', 'g') . ' ' . l:tmenu_text
+		execute 'anoremenu <silent> ' . s:mru_label . '.' . l:alt_key . '\.\ ' . l:menu_entry . l:menu_command
+		execute 'tmenu <silent> ' . s:mru_label . '.' . l:alt_key . '\.\ ' . substitute (escape (a:filename, '\\. 	|\~'), '&', '&&', 'g') . ' ' . l:tmenu_text
 	else
-		exe 'am ' . s:mru_label . '.' . l:menu_entry . l:menu_command
-		exe 'tmenu ' . s:mru_label . '.' . substitute (escape (a:filename, '\\. 	|\~'), '&', '&&', 'g') . ' ' . l:tmenu_text
+		execute 'anoremenu <silent> ' . s:mru_label . '.' . l:menu_entry . l:menu_command
+		execute 'tmenu <silent> ' . s:mru_label . '.' . substitute (escape (a:filename, '\\. 	|\~'), '&', '&&', 'g') . ' ' . l:tmenu_text
 	endif
 endfunction
 
+function! MRUEditFile(filename)
+	" edit or go to the buffer 
 
+	if bufloaded (a:filename)
+		silent execute 'buffer ' . a:filename
+	else
+		silent execute 'edit ' . a:filename
+	endif
+endfunction
 
-
-function! MRUAddOptionMenu ()
+function! MRUAddOptionMenu()
 " Add the Option menu entries
 	
-	execute 'amenu ' . s:mru_label . '.-sep0- <NUL>'
+	execute 'anoremenu <silent> ' . s:mru_label . '.-sep0- <NUL>'
 	if exists ("s:mru_hotkeys") && s:mru_hotkeys == 1
-		execute 'amenu ' . s:mru_label . '.Options.Non\ Numbered\ Menu :call MRUToggleHotKey()<CR>'
-		execute 'tmenu ' . s:mru_label . '.Options.Non\ Numbered\ Menu Remove sequential number/alphabet from the menu entry'
+		execute 'anoremenu <silent> ' . s:mru_label . '.Options.Non\ Numbered\ Menu :call MRUToggleHotKey()<CR>'
+		execute 'tmenu <silent> ' . s:mru_label . '.Options.Non\ Numbered\ Menu Remove sequential number/alphabet from the menu entry'
 	else
-		execute 'amenu ' . s:mru_label . '.Options.Numbered\ Menu :call MRUToggleHotKey()<CR>'
-		execute 'tmenu ' . s:mru_label . '.Options.Numbered\ Menu Add a sequential number/alphabet to the menu entry (0-9/A-Z)'
+		execute 'anoremenu <silent> ' . s:mru_label . '.Options.Numbered\ Menu :call MRUToggleHotKey()<CR>'
+		execute 'tmenu <silent> ' . s:mru_label . '.Options.Numbered\ Menu Add a sequential number/alphabet to the menu entry (0-9/A-Z)'
 	endif
 
-	execute 'amenu ' . s:mru_label . '.Options.Set\ Menu\ Size :call MRUSetMenuSize()<CR>'
-	execute 'tmenu ' . s:mru_label . '.Options.Set\ Menu\ Size Allows you to change the number of entries in menu.'
-	execute 'amenu ' . s:mru_label . '.Options.Rename\ Menu :call MRUSetMenuLabel()<CR>'
-	execute 'tmenu ' . s:mru_label . '.Options.Rename\ Menu Allows you to rename the Top Menu Name'
+	execute 'anoremenu <silent> ' . s:mru_label . '.Options.Set\ Menu\ Size :call MRUSetMenuSize()<CR>'
+	execute 'tmenu <silent>' . s:mru_label . '.Options.Set\ Menu\ Size Allows you to change the number of entries in menu.'
+	execute 'anoremenu <silent> ' . s:mru_label . '.Options.Rename\ Menu :call MRUSetMenuLabel()<CR>'
+	execute 'tmenu <silent>' . s:mru_label . '.Options.Rename\ Menu Allows you to rename the Top Menu Name'
 
-	execute 'amenu ' . s:mru_label . '.Options.-sep0- <NUL>'
-	execute 'amenu ' . s:mru_label . '.Options.Remove\ Invalid :call MRURemoveInvalid()<CR>'
-	execute 'tmenu ' . s:mru_label . '.Options.Remove\ Invalid Removes files no longer exists from the list'
-	execute 'amenu ' . s:mru_label . '.Options.Clear\ List :call MRUClearList()<CR>'
-	execute 'tmenu ' . s:mru_label . '.Options.Clear\ List Removes all the entries from this menu.'
-	execute 'amenu ' . s:mru_label . '.Options.Customize		:edit ' . s:script_file . '<CR>'
-	execute 'tmenu ' . s:mru_label . '.Options.Customize Edit the code behind MRU Menu'
+	execute 'anoremenu <silent> ' . s:mru_label . '.Options.-sep0- <NUL>'
+	execute 'anoremenu <silent> ' . s:mru_label . '.Options.Remove\ Invalid :call MRURemoveInvalid()<CR>'
+	execute 'tmenu <silent>' . s:mru_label . '.Options.Remove\ Invalid Removes files no longer exists from the list'
+	execute 'anoremenu <silent> ' . s:mru_label . '.Options.Clear\ List :call MRUClearList()<CR>'
+	execute 'tmenu <silent>' . s:mru_label . '.Options.Clear\ List Removes all the entries from this menu.'
+	execute 'anoremenu <silent> ' . s:mru_label . '.Options.Customize		:edit ' . s:script_file . '<CR>'
+	execute 'tmenu <silent>' . s:mru_label . '.Options.Customize Edit the code behind MRU Menu'
 
 endfunction
 
-
-
-
-function! MRUAddToList ()
+function! MRUAddToList()
 	" add current buffer to list of recent travellers.  Remove oldest if
 	" bigger than MRU_MENUSIZE
 
-	call MRUInitializeGlobals () " incase vim is started with drag & drop
+	" incase vim is started with drag & drop
+	call MRUInitializeGlobals ()
 
 	let l:filename = expand("<afile>:p")
 
+	"+++ Cream: fix exclusion of help files
 	" Exclude following files/types/folders
-	if &filetype == 'help'
-		" do not add help files to the list
+	"if &filetype == 'help'
+	"	" do not add help files to the list
+	"	return	
+	"endif
+	if getbufvar(l:filename, "&filetype") == "help"
 		return	
 	endif
+	"+++
+
 "	if exists("g:spooldir") && l:filename =~ g:spooldir
 "		" do not add spooled files to the list
 "		return	
@@ -269,21 +271,20 @@ function! MRUAddToList ()
 
 	if l:filename != '' && filereadable (expand ("<afile>"))
 		" Remove the current file entry from MRU_BUFFERS
-		let s:mru_buffers = substitute(s:mru_buffers, escape(l:filename,'\\~'). "\377", '', 'g')
+		let s:mru_buffers = substitute(s:mru_buffers, escape(l:filename,'\\~'). s:sep, '', 'g')
 		" Add current file as the first in MRU_BUFFERS list
-		let s:mru_buffers = l:filename . "\377" . s:mru_buffers
+		let s:mru_buffers = l:filename . s:sep . s:mru_buffers
 
 		" Remove oldest entry if > MRU_MENUSIZE
 		if s:mru_count > s:mru_menusize
-			let l:trash = substitute(s:mru_buffers, "\377", "ÿ", "g")
-			let l:trash = matchstr(l:trash, '\([^ÿ]*ÿ\)\{'.s:mru_menusize.'\}')
-			let s:mru_buffers = substitute(l:trash, "ÿ", "\377", "g")
+			let l:trash = substitute(s:mru_buffers, s:sep, "^^", "g")
+			let l:trash = matchstr(l:trash, '\([^^^]*^^\)\{'.s:mru_menusize.'\}')
+			let s:mru_buffers = substitute(l:trash, "^^", s:sep, "g")
 		endif
 		call MRURefreshMenu()
 	endif
 
 endfunction
-
 
 
 " Customizing Options
@@ -302,20 +303,6 @@ function! MRUClearList()
 endfunction
 
 
-
-
-function! MRUDisplayMenu()
-	" show the menu using ALT R - not implemented
-	" Note: this works only if the menu alt key is R
-	if has("gui")
-		simalt R
-	endif
-endfunction
-
-
-
-
-
 function! MRUToggleHotKey()
 	if s:mru_hotkeys == 1
 		let s:mru_hotkeys = 0
@@ -326,29 +313,21 @@ function! MRUToggleHotKey()
 "	call MRUDisplayMenu ()
 endfunction
 
-
-
-
-
 function! MRUSetMenuLabel()
-	exec 'let l:menu_label = input ("Enter Menu Label [' . s:mru_label . ']: ")'
+	execute 'let l:menu_label = input ("Enter Menu Label [' . s:mru_label . ']: ")'
 
 	if l:menu_label != ""
 		" remove current MRU Menu
-		execute 'amenu ' . s:mru_label . '.x x'
-		execute 'aunmenu ' . s:mru_label
+		execute 'anoremenu <silent> ' . s:mru_label . '.x x'
+		execute 'silent! aunmenu ' . s:mru_label
 
 		let s:mru_label = l:menu_label
 		call MRURefreshMenu ()
 	endif
 endfunction
 
-
-
-
-
 function! MRUSetMenuSize()
-	exec 'let l:menu_size = input ("Enter Menu Size [' . s:mru_menusize . ']: ")'
+	execute 'let l:menu_size = input ("Enter Menu Size [' . s:mru_menusize . ']: ")'
 
 	if l:menu_size != ""
 		let s:mru_menusize = l:menu_size
@@ -358,10 +337,6 @@ function! MRUSetMenuSize()
 "	call MRUDisplayMenu ()
 endfunction
 
-
-
-
-
 function! MRURemoveInvalid()
 	" Remove non existing files from the menu
 
@@ -369,7 +344,7 @@ function! MRURemoveInvalid()
 	let l:buf_list = ""
 	let l:buf_count = 0
 	while l:list != ""
-		let l:entry_length = match(l:list, "\377")
+		let l:entry_length = match(l:list, s:sep)
 		if l:entry_length >= 0
 			let l:fullpath = strpart(l:list, 0, l:entry_length)
 			let l:list = strpart(l:list, l:entry_length+1, strlen(l:list))
@@ -381,7 +356,7 @@ function! MRURemoveInvalid()
 			if l:buf_count == 0
 				let l:buf_list = l:fullpath
 			else
-				let l:buf_list = l:buf_list . "\377" . l:fullpath
+				let l:buf_list = l:buf_list . s:sep . l:fullpath
 			endif
 			let l:buf_count = l:buf_count + 1
 		endif
@@ -395,49 +370,25 @@ function! MRURemoveInvalid()
 endfunction
 
 
-
-
-
-
-
 function! MRUVimLeavePre()
 	let g:MRU_LABEL = s:mru_label
 	let g:MRU_MENUSIZE = s:mru_menusize
 	let g:MRU_HOTKEYS = s:mru_hotkeys
-	let g:MRU_BUFFERS = s:mru_buffers
-	
-	" Split the MRU_BUFFERS int to small ones (< 494), apparently when vim is
-	" restarted it reads in only first 494 characters of the global buffer.
-	" THIS IS JUST A WORK AROUND
-
-"	if 0==1
-"	" Remove entries past MRU_MENUSIZE
-"	if s:mru_count > s:mru_menusize
-"		let trash = substitute(g:MRU_BUFFERS, "\377", "ÿ", "g")
-"		let trash = matchstr(trash, '\([^ÿ]*ÿ\)\{'.s:mru_menusize.'\}')
-"		let g:MRU_BUFFERS = substitute(trash, "ÿ", "\377", "g")
-"	endif
-"
-"	let counter = 0
-"	while ( strlen ( g:MRU_BUFFERS) > 0)
-"		let counter = counter + 1
-"		let temp_str = strpart ( g:MRU_BUFFERS, 0, 400 )
-"		let g:MRU_BUFFERS = strpart ( g:MRU_BUFFERS, 400, 99999999 )
-"		exec 'let g:MRU_BUFFER' . counter . '=temp_str'
-"	endwhile
-"	unlet g:MRU_BUFFERS
-"	endif
-"	let g:MRU_BUF_COUNT = counter
-
+	if exists ("s:mru_buffers")
+		let g:MRU_BUFFERS = s:mru_buffers
+	endif
 endfunction
-
-
 
 augroup MRU
 	autocmd!
 	autocmd VimEnter * call MRUInitialize()
-"	autocmd GUIEnter * call MRUInitialize()
-	autocmd BufDelete,BufEnter,BufWritePost,FileWritePost * call MRUAddToList ()
+	"autocmd GUIEnter * call MRUInitialize()
+    "+++ Cream: remove redundant events (When buffer not current,
+    "           filetype is not able to be determined and excluded
+    "           based on type.)
+	"autocmd BufDelete,BufEnter,BufWritePost,FileWritePost * call MRUAddToList ()
+	autocmd BufEnter * call MRUAddToList ()
+	"+++
 	autocmd VimLeavePre * nested call MRUVimLeavePre()
 augroup END
 
